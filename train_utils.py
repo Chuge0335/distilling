@@ -16,7 +16,7 @@
 import os
 import shutil
 import logging
-
+from transformers.integrations import WandbCallback
 from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer
 from transformers import T5ForConditionalGeneration
 from transformers import DataCollatorForSeq2Seq
@@ -38,8 +38,8 @@ def train_and_evaluate(args, run, tokenizer, tokenized_datasets, compute_metrics
         model.parallelize()
     
     config_dir = get_config_dir(args)
-    output_dir = f'ckpts/{config_dir}/{run}'  # for model ckpts
-    logging_dir = f'logs/{config_dir}/{run}'  # for training logs
+    output_dir = f'output/ckpts/{config_dir}/{run}'  # for model ckpts
+    logging_dir = f'output/logs/{config_dir}/{run}'  # for training logs
 
     if args.no_log:
         logging_strategy = 'no'
@@ -82,6 +82,10 @@ def train_and_evaluate(args, run, tokenizer, tokenized_datasets, compute_metrics
     else:
         raise ValueError
 
+    # wandb_callback = WandbCallback(
+    #     name=args.wandb_name,
+    #     config=args
+    # )
 
     trainer_kwargs = {
         'alpha': args.alpha,
@@ -93,6 +97,7 @@ def train_and_evaluate(args, run, tokenizer, tokenized_datasets, compute_metrics
         'data_collator': data_collator,
         'tokenizer': tokenizer,
         'compute_metrics': compute_metrics,
+        'callbacks':[WandbCallback]
     }
     
 

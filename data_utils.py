@@ -26,10 +26,11 @@ DATASET_ROOT = 'datasets'
 
 class DatasetLoader(object):
     def __init__(self, dataset_name, source_dataset_name, dataset_version, has_valid, split_map,
-                 batch_size, train_batch_idxs, test_batch_idxs, valid_batch_idxs=None):
+                 batch_size, train_batch_idxs, test_batch_idxs, sub_dataset_name=None, valid_batch_idxs=None):
         self.data_root = DATASET_ROOT
         self.dataset_name = dataset_name
         self.source_dataset_name = source_dataset_name
+        self.sub_dataset_name = sub_dataset_name
         self.dataset_version = dataset_version
         self.has_valid = has_valid
         self.split_map = split_map
@@ -47,7 +48,9 @@ class DatasetLoader(object):
             self.source_dataset_name = self.dataset_name
         if self.dataset_version is None:
             datasets = load_dataset(self.source_dataset_name)
-        else:
+        elif sub_dataset_name is not None:
+            datasets = load_dataset(self.source_dataset_name, self.sub_dataset_name, self.dataset_version)
+        else :
             datasets = load_dataset(self.source_dataset_name, self.dataset_version)
         return datasets
 
@@ -139,6 +142,83 @@ class CQADatasetLoader(DatasetLoader):
 
         super().__init__(dataset_name, source_dataset_name, dataset_version, has_valid, split_map,
                  batch_size, train_batch_idxs, test_batch_idxs, valid_batch_idxs=None)
+
+
+    def _post_process(self, datasets):
+        
+        def prepare_input(example):
+            question = example['question']
+            c_0 = example['choices'][0]
+            c_1 = example['choices'][1]
+            c_2 = example['choices'][2]
+            c_3 = example['choices'][3]
+            c_4 = example['choices'][4]
+
+            input = f'{question}\nAnswer Choices:\n(a) {c_0}\n(b) {c_1}\n(c) {c_2}\n(d) {c_3}\n(e) {c_4}'
+
+            example['input'] = input
+            example['label'] = example['answer']
+
+            return example
+
+        datasets = datasets.map(prepare_input)
+        datasets = datasets.remove_columns(['id', 'question', 'choices', 'answer', 'abstractive_explanation', 'extractive_explanation'])
+
+        return datasets
+
+
+    def _parse_llm_output(self, output):
+        rationale_label = output.split('Q:')[0]
+        rationale_label = rationale_label.rstrip()
+        rationale, label = rationale_label.split('So the answer is')
+        rationale = rationale.rstrip()
+
+        try:
+            label = re.split(r'\(.\)', label)[1].strip()
+            label = label if label[-1]!='.' else label[:-1]
+        except:
+            label = ' '
+        
+        return rationale, label
+
+
+    def _parse_gpt_output(self, output):
+        rationale_label = output.split('Q:')[0]
+        rationale_label = rationale_label.rstrip().lstrip()
+        try:
+            rationale, label = rationale_label.split('So the answer is')
+            rationale = rationale.rstrip()
+        except:
+            rationale = ' '
+            label = ' '
+            return rationale, label
+
+        try:
+            label = re.split(r'\(.\)', label)[1].strip()
+            label = label if label[-1]!='.' else label[:-1]
+        except:
+            label = ' '
+        
+        return rationale, label
+
+
+class MMLUDatasetLoader(DatasetLoader):
+    def __init__(self):
+        dataset_name = 'mmlu'
+        source_dataset_name = 'cais/mmlu'
+        sub_dataset_name = 'all'
+        dataset_version = 'v1.0.0'
+        has_valid = False
+        split_map = {
+            'train': 'auxiliary_train',
+            'test': 'test',
+        }
+        batch_size = 1000
+        train_batch_idxs = range(10)
+        test_batch_idxs = range(2)
+
+        super().__init__(dataset_name, source_dataset_name, dataset_version, has_valid, split_map,
+                 batch_size, train_batch_idxs, test_batch_idxs, sub_dataset_name=sub_dataset_name,valid_batch_idxs=None)
 
 
     def _post_process(self, datasets):

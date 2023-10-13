@@ -9,6 +9,7 @@ conda create --name distill python=3.10.6 -y
 conda activate distill
 conda install -y pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.3 -c pytorch
 pip install git+https://github.com/huggingface/transformers@v4.24.0 datasets sentencepiece protobuf==3.20.* tensorboardX
+pip install wandb
 ```
 - Extract datasets to `datasets/`:
 ```

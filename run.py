@@ -24,6 +24,11 @@ from train_utils import train_and_evaluate
 
 
 def run(args):
+    #### Init wandb
+    # if args.wandb_name != "":
+    #     wandb.init(config=args,project="AIGC_FULL",name=args.wandb_name)
+    # else 
+    #     wandb.init(mode="disabled")
     #### Prepare datasets
     if args.dataset == 'cqa':
         dataset_loader = CQADatasetLoader()
@@ -223,7 +228,16 @@ if __name__ == '__main__':
     parser.add_argument('--bf16', action='store_true')
     parser.add_argument('--no_log', action='store_true')
     parser.add_argument('--output_rationale', action='store_true')
+    parser.add_argument('--wandb_name', type=str, default='')
 
     args = parser.parse_args()
-
-    run(args)
+    try:
+        run(args)
+    except:
+        import sys,pdb,bdb
+        type, value, tb = sys.exc_info()
+        if type == bdb.BdbQuit:
+            exit()
+        print(type,value)
+        pdb.post_mortem(tb)
+    
